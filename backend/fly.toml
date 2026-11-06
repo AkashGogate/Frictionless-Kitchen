@@ -1,0 +1,19 @@
+# Fly.io config (ARCHITECTURE.md #1: needs a persistent-connection host, not serverless).
+# Deploy with: fly launch --no-deploy (first time, picks up this file) then `fly deploy`.
+# Set the real secret before deploying: fly secrets set DEEPGRAM_API_KEY=...
+app = "kitchen-copilot"          # fly launch will prompt to rename if taken
+primary_region = "iad"
+
+[build]
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false      # keep the WebSocket-holding process warm during a demo
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

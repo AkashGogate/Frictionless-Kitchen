@@ -1,0 +1,118 @@
+[
+  {
+    "name": "tc1_clean_single_call",
+    "file": "tc1_clean_single_call.wav",
+    "description": "Single clean call, baseline happy path.",
+    "expected_calls": [
+      {
+        "text": "Fire two salmon on the grill",
+        "item": "salmon",
+        "quantity": 2,
+        "station": "grill"
+      }
+    ]
+  },
+  {
+    "name": "tc2_overlapping_two_stations",
+    "file": "tc2_overlapping_two_stations.wav",
+    "description": "Two overlapping calls, different stations \u2014 the core hard case.",
+    "expected_calls": [
+      {
+        "text": "Fire one burger on the grill",
+        "item": "burger",
+        "quantity": 1,
+        "station": "grill"
+      },
+      {
+        "text": "Need one risotto on the saute",
+        "item": "risotto",
+        "quantity": 1,
+        "station": "saute"
+      }
+    ]
+  },
+  {
+    "name": "tc3_three_simultaneous",
+    "file": "tc3_three_simultaneous.wav",
+    "description": "Three simultaneous calls, full overlap \u2014 stress case.",
+    "expected_calls": [
+      {
+        "text": "Fire two chicken on the grill",
+        "item": "chicken",
+        "quantity": 2,
+        "station": "grill"
+      },
+      {
+        "text": "Need one duck on the pass",
+        "item": "duck",
+        "quantity": 1,
+        "station": "pass"
+      },
+      {
+        "text": "Fire three tacos",
+        "item": "tacos",
+        "quantity": 3,
+        "station": null
+      }
+    ]
+  },
+  {
+    "name": "tc4_noise_bed_ramp",
+    "file": "tc4_noise_bed_ramp.wav",
+    "description": "Clean call against an escalating white-noise bed (stand-in for exhaust fan/sizzling/clatter).",
+    "expected_calls": [
+      {
+        "text": "Fire two scallops on the saute",
+        "item": "scallops",
+        "quantity": 2,
+        "station": "saute"
+      }
+    ]
+  },
+  {
+    "name": "tc5_truncated_shouted",
+    "file": "tc5_truncated_shouted.wav",
+    "description": "Truncated/shouted non-standard phrasing.",
+    "expected_calls": [
+      {
+        "text": "SALMON TWO GRILL NOW",
+        "item": "salmon",
+        "quantity": 2,
+        "station": "grill"
+      }
+    ]
+  },
+  {
+    "name": "tc6_accented_speech",
+    "file": "tc6_accented_speech.wav",
+    "description": "Accented speech (en_IN voice stand-in \u2014 not a real accent corpus, a known limitation).",
+    "expected_calls": [
+      {
+        "text": "Fire one lamb on the grill",
+        "item": "lamb",
+        "quantity": 1,
+        "station": "grill"
+      }
+    ]
+  },
+  {
+    "name": "tc7_false_trigger_chatter",
+    "file": "tc7_false_trigger_chatter.wav",
+    "description": "Background chatter (not a call) followed by a real call \u2014 chatter must be ignored.",
+    "expected_calls": [
+      {
+        "text": "did you catch the game last night",
+        "item": null,
+        "quantity": 0,
+        "station": null,
+        "is_call": false
+      },
+      {
+        "text": "fire three salad on pantry",
+        "item": "salad",
+        "quantity": 3,
+        "station": "pantry"
+      }
+    ]
+  }
+]

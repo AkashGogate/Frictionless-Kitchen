@@ -28,6 +28,19 @@ cd backend
 uv run pytest -v
 ```
 
+## Audio-level eval (docs/TESTING.md §7)
+```bash
+cd backend
+.venv/bin/python audio_gen/generate_samples.py   # macOS only (uses `say`); regenerates audio-samples/
+.venv/bin/python -m eval.run_eval --mode mock    # proves the scoring harness; real numbers need DEEPGRAM_API_KEY
+```
+Scorecard written to `audio-samples/scorecard.md`. See docs/TESTING.md §7 for the honest Coval-vs-this-harness gap.
+
+## Deployment scaffold
+- `backend/Dockerfile` + `backend/fly.toml` — builds and runs clean (verified locally with `docker build` + `docker run`, hits `/scenarios` and `/session/start` correctly). Deploy: `fly launch --no-deploy` once, then `fly secrets set DEEPGRAM_API_KEY=...` and `fly deploy` (needs a Fly.io account — not set up yet).
+- `.github/workflows/test.yml` — runs `pytest` on every push/PR touching `backend/`.
+- `frontend/config.js` — set `window.KITCHEN_COPILOT_API` to the real backend URL once it's deployed; defaults to `localhost:8000` until then. Frontend deploys to Vercel with zero config (plain static HTML, no build step).
+
 ## Running the frontend
 ```bash
 cd frontend
