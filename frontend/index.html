@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>kitchen-copilot demo</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; background: #0f1115; color: #e8e8e8; }
+  h1 { font-size: 1.3rem; }
+  .controls { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  button { background: #2a2f3a; color: #fff; border: 1px solid #444; border-radius: 6px; padding: .5rem .9rem; cursor: pointer; font-size: .9rem; }
+  button:hover { background: #3a4150; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #log { border: 1px solid #333; border-radius: 8px; padding: .75rem; height: 360px; overflow-y: auto; background: #15181e; }
+  .entry { padding: .4rem .2rem; border-bottom: 1px solid #22262e; font-size: .9rem; }
+  .entry.matched { color: #7bdc8f; }
+  .entry.mismatch { color: #ff8a8a; }
+  .entry.ignored { color: #777; }
+  .meta { color: #999; font-size: .78rem; }
+  select { background: #2a2f3a; color: #fff; border: 1px solid #444; border-radius: 6px; padding: .5rem; }
+  .note { font-size: .8rem; color: #999; margin-top: .5rem; }
+</style>
+</head>
+<body>
+  <h1>kitchen-copilot — live demo</h1>
+  <p class="note">Ticket queue is seeded/mocked for this demo (TECH_STACK.md) — not a real POS. Session auto-expires per ARCHITECTURE.md's abuse cap.</p>
+
+  <div class="controls">
+    <button id="startBtn">Start session</button>
+    <button id="micBtn" disabled>🎙️ Use your own mic</button>
+    <select id="scenarioSelect" disabled><option>Loading scenarios…</option></select>
+    <button id="playBtn" disabled>▶ Play test scenario</button>
+    <button id="killBtn" disabled>⏹ Kill session</button>
+  </div>
+  <p id="status" class="meta">No session yet.</p>
+
+  <div id="log"></div>
+
+  <script>
+    const API = window.KITCHEN_COPILOT_API || "http://localhost:8000";
+    let sessionId = null, ws = null;
+
+    const logEl = document.getElementById("log");
+    const statusEl = document.getElementById("status");
+    const startBtn = document.getElementById("startBtn");
+    const micBtn = document.getElementById("micBtn");
+    const killBtn = document.getElementById("killBtn");
+    const playBtn = document.getElementById("playBtn");
+    const scenarioSelect = document.getElementById("scenarioSelect");
+
+    function addEntry(call) {
+      const div = document.createElement("div");
+      const cls = !call.is_call ? "ignored" : call.matched ? "matched" : "mismatch";
+      div.className = "entry " + cls;
+      const headline = !call.is_call
+        ? `(ignored — not a fire call) "${call.raw_text}"`
+        : call.matched
+          ? `✓ ${call.quantity} ${call.item ?? "?"}${call.station ? " @ " + call.station : ""} — ${call.ticket_id ?? "logged"}`
+          : `✗ MISMATCH: "${call.raw_text}" — ${call.reason}`;
+      div.innerHTML = `${headline}<div class="meta">${call.speaker_turn}</div>`;
+      logEl.prepend(div);
+    }
+
+    async function startSession() {
+      const res = await fetch(`${API}/session/start`, { method: "POST" });
+      if (!res.ok) { statusEl.textContent = "Could not start session (" + res.status + ")"; return; }
+      const data = await res.json();
+      sessionId = data.session_id;
+      statusEl.textContent = `Session ${sessionId.slice(0, 8)} — ${Math.round(data.max_seconds)}s cap`;
+      ws = new WebSocket(`${API.replace(/^http/, "ws")}/ws/${sessionId}`);
+      ws.onmessage = (ev) => addEntry(JSON.parse(ev.data));
+      ws.onclose = () => { statusEl.textContent = "Session ended."; micBtn.disabled = true; playBtn.disabled = true; killBtn.disabled = true; };
+      micBtn.disabled = false; playBtn.disabled = false; killBtn.disabled = false; startBtn.disabled = true;
+    }
+
+    async function killSession() {
+      if (!sessionId) return;
+      await fetch(`${API}/session/${sessionId}/kill`, { method: "POST" });
+      ws?.close();
+      stopMic();
+      startBtn.disabled = false;
+    }
+
+    function playScenario() {
+      if (!ws || ws.readyState !== 1) return;
+      ws.send(JSON.stringify({ type: "scenario", name: scenarioSelect.value }));
+    }
+
+    // Live-mic path: raw browser audio (webm/opus via MediaRecorder) is streamed
+    // as binary WebSocket frames straight to the backend, which forwards it to
+    // Deepgram's live STT and runs the result through the SAME parse_call ->
+    // check_mismatch -> log path the test-scenario button uses (ARCHITECTURE.md
+    // #2.2 — one real pipeline, two audio sources, not two pipelines behind one UI).
+    let mediaRecorder = null, micStream = null;
+
+    async function startMic() {
+      if (!ws || ws.readyState !== 1) { statusEl.textContent = "Start a session first."; return; }
+      if (!navigator.mediaDevices?.getUserMedia) { statusEl.textContent = "This browser can't capture mic audio — use a test scenario instead."; return; }
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (e) {
+        statusEl.textContent = "Mic permission denied — use a test scenario instead.";
+        return;
+      }
+      mediaRecorder = new MediaRecorder(micStream, { mimeType: "audio/webm;codecs=opus" });
+      mediaRecorder.ondataavailable = async (ev) => {
+        if (ev.data.size > 0 && ws?.readyState === 1) ws.send(await ev.data.arrayBuffer());
+      };
+      mediaRecorder.start(250); // 250ms chunks, streamed live to the backend
+      micBtn.textContent = "🛑 Stop mic";
+    }
+
+    function stopMic() {
+      mediaRecorder?.stop();
+      micStream?.getTracks().forEach((t) => t.stop());
+      mediaRecorder = null;
+      micStream = null;
+      ws?.send(JSON.stringify({ type: "mic_stop" }));
+      micBtn.textContent = "🎙️ Use your own mic";
+    }
+
+    micBtn.addEventListener("click", () => (mediaRecorder ? stopMic() : startMic()));
+    startBtn.addEventListener("click", startSession);
+    killBtn.addEventListener("click", killSession);
+    playBtn.addEventListener("click", playScenario);
+
+    fetch(`${API}/scenarios`).then(r => r.json()).then(list => {
+      scenarioSelect.innerHTML = list.map(s => `<option value="${s.name}" title="${s.description}">${s.name}</option>`).join("");
+      scenarioSelect.disabled = false;
+    }).catch(() => { scenarioSelect.innerHTML = "<option>backend unreachable</option>"; });
+  </script>
+</body>
+</html>

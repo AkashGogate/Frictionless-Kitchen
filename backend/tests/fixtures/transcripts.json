@@ -1,0 +1,40 @@
+[
+  {
+    "name": "clean_single_call",
+    "description": "TESTING.md case 1: single clean call, baseline happy path.",
+    "turns": [
+      {"text": "Fire two salmon on the grill", "speaker_turn": "speaker-0"}
+    ]
+  },
+  {
+    "name": "overlapping_two_stations",
+    "description": "TESTING.md case 2: two overlapping calls, different stations.",
+    "turns": [
+      {"text": "Fire one burger on the grill", "speaker_turn": "speaker-0"},
+      {"text": "Need one risotto on the saute", "speaker_turn": "speaker-1"}
+    ]
+  },
+  {
+    "name": "truncated_shouted",
+    "description": "TESTING.md case 5: truncated/shouted non-standard phrasing.",
+    "turns": [
+      {"text": "SALMON TWO GRILL NOW", "speaker_turn": "speaker-0"},
+      {"text": "86 the duck", "speaker_turn": "speaker-1"}
+    ]
+  },
+  {
+    "name": "false_trigger_chatter",
+    "description": "TESTING.md case 7: background chatter that is not a call, must be ignored.",
+    "turns": [
+      {"text": "did you catch the game last night", "speaker_turn": "speaker-0"},
+      {"text": "fire three salad on pantry", "speaker_turn": "speaker-1"}
+    ]
+  },
+  {
+    "name": "quantity_mismatch",
+    "description": "Mismatch case: called quantity doesn't match the seeded ticket.",
+    "turns": [
+      {"text": "fire one salmon on the grill", "speaker_turn": "speaker-0"}
+    ]
+  }
+]
